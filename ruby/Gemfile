@@ -1,0 +1,9 @@
+source 'https://rubygems.org'
+
+gem 'irb', require: false
+gem 'oj'
+gem 'oj_mimic_json'
+gem 'pry'
+gem 'hiredis'
+gem 'redis', '~> 3', require: ['redis', 'redis/connection/hiredis']
+gem 'connection_pool'
