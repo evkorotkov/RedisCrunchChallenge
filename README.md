@@ -13,3 +13,11 @@ redis-cli --eval populate.lua
 ```bash
 ./ruby/runner.sh <processes_count> <threads_count>
 ```
+
+## Golang
+
+```bash
+  cd golang/
+  make build
+  WORKERS=<workers_count> ./main
+```

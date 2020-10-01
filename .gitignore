@@ -2,4 +2,7 @@ output/*
 !output/.keep
 
 js/node_modules/
+
 rust/target/
+
+golang/main
