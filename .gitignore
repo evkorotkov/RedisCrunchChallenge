@@ -1,2 +1,4 @@
 output/*
 !output/.keep
+
+js/node_modules/
