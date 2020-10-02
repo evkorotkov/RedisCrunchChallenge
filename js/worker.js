@@ -44,4 +44,4 @@ const processEvents = async () => {
   }
 };
 
-processEvents().then(() => process.exit(0))
+parentPort.once('message', () => processEvents().then(() => process.exit(0)));

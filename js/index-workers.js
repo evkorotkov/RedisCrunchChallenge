@@ -25,6 +25,8 @@ const workers = os.cpus().map(() => {
     });
 
     worker.on('error', reject);
+
+    worker.postMessage('start');
   });
 });
 
