@@ -7,7 +7,7 @@ const fs = require('fs');
 const csvWriter = require('csv-write-stream');
 
 const writer = csvWriter({ sendHeaders: false, headers: ['ts', 'idx', 'signature'] });
-const filepath = path.resolve(__filename, '..', `../output/js-${Date.now()}.csv`);
+const filepath = path.resolve(__filename, '..', `../output/js-workers-${Date.now()}.csv`);
 writer.pipe(fs.createWriteStream(filepath, { flags: 'w+' }));
 
 const workers = os.cpus().map(() => {

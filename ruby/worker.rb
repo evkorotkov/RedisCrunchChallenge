@@ -86,7 +86,7 @@ class Worker
   end
 
   def process_event(data)
-    data[:total] = data[:price] * (1 - DISCOUNTS_MAP.fetch(data[:wday], 0) / 100.0)
+    data[:total] = (data[:price] * (1 - DISCOUNTS_MAP.fetch(data[:wday], 0) / 100.0)).round(2)
 
     Digest::MD5.hexdigest(JSON.dump(data))
   end

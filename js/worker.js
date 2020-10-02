@@ -16,9 +16,12 @@ const discounts = [
   30
 ];
 
+const round = (val) => Math.round(val * 100) / 100;
+
 const processEvent = evt => {
-  const discount = (discounts[evt.wday] || 0) / 100
-  evt.total = evt.price * (1 - discount);
+  const discount = (discounts[evt.wday] || 0) / 100;
+  evt.total = round(evt.price * (1 - discount));
+
   return hash(JSON.stringify(evt));
 };
 
@@ -32,7 +35,7 @@ const processEvents = async () => {
       const [_, evt] = response;
       if (evt) {
         const parsed = JSON.parse(evt);
-        const signature = processEvent(evt);
+        const signature = processEvent(parsed);
         parentPort.postMessage([Date.now(), parsed.index, signature]);
       } else {
         running = false;
