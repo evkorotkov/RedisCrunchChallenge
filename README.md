@@ -5,7 +5,7 @@ redis-cli --eval populate.lua
 ```
 
 ```bash
-ruby stats.rb <path_to_csv_file>
+./stats_last.sh <ruby | js | etc..>
 ```
 
 ## Ruby
