@@ -1,9 +1,10 @@
 version: '3.4'
 
 x-lang: &default-lang
-  command: /bin/sh -c "redis-cli -h redis --eval populate.lua && sh"
+  command: /bin/sh -c "redis-cli -h redis --eval /populate.lua && sh"
   volumes:
     - ./populate.lua:/populate.lua
+    - .:/app
   environment:
     REDIS_HOST: redis
   depends_on:
