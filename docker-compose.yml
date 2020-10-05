@@ -1,0 +1,31 @@
+version: '3.4'
+
+x-lang: &default-lang
+  command: /bin/sh -c "redis-cli -h redis --eval populate.lua && sh"
+  volumes:
+    - ./populate.lua:/populate.lua
+  environment:
+    REDIS_HOST: redis
+  depends_on:
+    - redis
+services:
+  ruby:
+    <<: *default-lang
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.ruby
+  node:
+    <<: *default-lang
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.node
+  elixir:
+    <<: *default-lang
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.elixir
+  redis:
+    image: redis:6.0.8-alpine
+    command: redis-server
+    ports:
+      - 6379:6379

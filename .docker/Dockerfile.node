@@ -1,0 +1,3 @@
+FROM node:14.12-alpine
+
+RUN apk add --update --no-cache redis ruby=2.6.6-r2
