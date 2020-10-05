@@ -1,8 +1,14 @@
+use std::time::SystemTime;
+use std::env;
+
 use redis::{Commands, RedisError};
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
 use csv::Writer;
 use math::round;
+
+use tokio::runtime;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::error::TryRecvError;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Message {
@@ -53,23 +59,76 @@ fn now() -> String {
   return format!("{}", elapsed.as_millis());
 }
 
-fn process_events() {
-  let client = redis::Client::open("redis://127.0.0.1/").unwrap();
-  let mut con = client.get_connection().unwrap();
-  let mut csv_file = Writer::from_path(format!("../output/rust-{}.csv", now())).unwrap();
-
-  loop {
-    let encoded = con.brpop("events_queue", 5);
-    match Message::from_redis(encoded) {
-      Some(mut decoded) => {
-        decoded.update_discount();
-        csv_file.write_record(&[now(), format!("{}", decoded.index), decoded.signature()]);
-      },
-      None => break,
-    }
+fn redis_path() -> String {
+  match env::var("REDIS_HOST") {
+    Ok(host) => format!("redis://{}/", host),
+    Err(_) => panic!("Cant fetch ENV[REDIS_HOST] var"),
   }
 }
 
 fn main() {
-  process_events();
+  let (snd, mut rcv) = mpsc::channel(256);
+
+  let mut threaded_rt = runtime::Builder::new()
+    .threaded_scheduler()
+    .build()
+    .unwrap();
+
+  let mut tasks = vec![];
+
+  for _ in 0..8 {
+    let mut snd2 = snd.clone();
+
+    let handle = threaded_rt.spawn(async move {
+      let client = redis::Client::open(redis_path()).unwrap();
+      let mut con = client.get_connection().unwrap();
+
+      loop {
+        let encoded = con.brpop("events_queue", 5);
+        match Message::from_redis(encoded) {
+          Some(message) => {
+            if let Err(err) = snd2.send(Some(message)).await {
+              break;
+            }
+          },
+          None => {
+            break;
+          },
+        }
+      }
+    });
+
+    tasks.push(handle);
+  }
+
+  threaded_rt.spawn(async move {
+    let mut snd3 = snd.clone();
+
+    for task in tasks {
+      if let Err(_) = task.await {
+        println!("Task failed.");
+      }
+    }
+
+    snd3.send(None).await
+  });
+
+  threaded_rt.block_on(async move {
+    let mut csv_file = Writer::from_path(format!("../output/rust-{}.csv", now())).unwrap();
+
+    loop {
+      if let Some(msg) = rcv.recv().await {
+        match msg {
+          Some(mut decoded) => {
+            decoded.update_discount();
+            csv_file.write_record(&[now(), format!("{}", decoded.index), decoded.signature()]).unwrap();
+          },
+          None => {
+            rcv.close();
+            break;
+          }
+        }
+      }
+    }
+  });
 }

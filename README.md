@@ -17,7 +17,23 @@ redis-cli --eval populate.lua
 ## Golang
 
 ```bash
-  cd golang/
-  make build
-  WORKERS=<workers_count> ./main
+cd golang/
+make build
+WORKERS=<workers_count> ./main
+```
+
+## Node
+
+```bash
+cd js
+npm install
+node index.js # or node index-workers.js
+```
+
+## Rust
+
+```bash
+cd rust
+cargo build --release
+./target/release/rust
 ```
