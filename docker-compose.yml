@@ -20,6 +20,11 @@ services:
     build:
       context: .
       dockerfile: .docker/Dockerfile.node
+  rust:
+    <<: *default-lang
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.rust
   elixir:
     <<: *default-lang
     build:

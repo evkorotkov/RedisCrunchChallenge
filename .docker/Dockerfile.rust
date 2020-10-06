@@ -1,0 +1,7 @@
+FROM rust:1.46.0-alpine
+
+ENV APP_ROOT=/app/rust
+
+RUN apk add --update --no-cache redis musl-dev
+
+WORKDIR ${APP_ROOT}
