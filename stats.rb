@@ -36,7 +36,12 @@ class Stats
     md5 = Digest::MD5.new
     signatures.each { |s| md5 << s.signature }
 
+    puts ""
+    puts "Avg items/s- #{th.values.inject(:+) / th.keys.size}"
+    puts "Min items/s- #{th.values.min}"
+    puts "Max items/s- #{th.values.max}"
     puts "Signature- #{md5.hexdigest}"
+    puts "Expected - 24b760abba866d98a760b0cac44543b2"
   end
 end
 
