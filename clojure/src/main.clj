@@ -1,12 +1,15 @@
 (ns main
-  (:require [taoensso.carmine :as car]))
+  (:require [taoensso.carmine :as car]
+            [clojure.core.async :as async :refer [go chan]]))
 
-(def server-conn { :pool {} :spec { :db 3 }})
+(def host (or (System/getenv "REDIS_HOST") "127.0.0.1"))
+(def server-conn { :pool {} :spec { :host host }})
 (defmacro with-connection [& body] `(car/wcar server-conn ~@body))
 
 (defn run []
-  (with-connection
-    (car/set "foo" { :hey 123 })
-    (println (car/get "foo")))
+  (let [result (with-connection
+                  (car/set "foo" "bar")
+                  (car/get "foo"))]
+    (println result)))
 
-(defn main [& args] (run))
+(defn -main [& args] (run))

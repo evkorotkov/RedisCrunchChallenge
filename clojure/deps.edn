@@ -1,4 +1,6 @@
-{:deps
-  { com.taoensso/carmine { :mvn/version "3.0.0" }}
-  :paths ["src"]
+{
+	 :deps {
+  	 com.taoensso/carmine   { :mvn/version "3.0.0" }
+  	 org.clojure/core.async { :mvn/version "1.3.610" }
+  }
 }

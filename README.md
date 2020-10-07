@@ -37,3 +37,10 @@ cd rust
 cargo build --release
 ./target/release/rust
 ```
+
+## Clojure
+
+```bash
+cd clojure
+clj -m main
+```
