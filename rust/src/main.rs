@@ -6,9 +6,7 @@ use serde::{Deserialize, Serialize};
 use csv::Writer;
 use math::round;
 
-use tokio::runtime;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::TryRecvError;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Message {
@@ -66,20 +64,16 @@ fn redis_path() -> String {
   }
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
   let (snd, mut rcv) = mpsc::channel(256);
-
-  let mut threaded_rt = runtime::Builder::new()
-    .threaded_scheduler()
-    .build()
-    .unwrap();
 
   let mut tasks = vec![];
 
   for _ in 0..8 {
     let mut snd2 = snd.clone();
 
-    let handle = threaded_rt.spawn(async move {
+    let handle = tokio::spawn(async move {
       let client = redis::Client::open(redis_path()).unwrap();
       let mut con = client.get_connection().unwrap();
 
@@ -87,7 +81,7 @@ fn main() {
         let encoded = con.brpop("events_queue", 5);
         match Message::from_redis(encoded) {
           Some(message) => {
-            if let Err(err) = snd2.send(Some(message)).await {
+            if let Err(_) = snd2.send(Some(message)).await {
               break;
             }
           },
@@ -101,7 +95,7 @@ fn main() {
     tasks.push(handle);
   }
 
-  threaded_rt.spawn(async move {
+  tokio::spawn(async move {
     let mut snd3 = snd.clone();
 
     for task in tasks {
@@ -113,22 +107,22 @@ fn main() {
     snd3.send(None).await
   });
 
-  threaded_rt.block_on(async move {
-    let mut csv_file = Writer::from_path(format!("../output/rust-{}.csv", now())).unwrap();
+  let mut csv_file = Writer::from_path(format!("../output/rust-{}.csv", now())).unwrap();
 
-    loop {
-      if let Some(msg) = rcv.recv().await {
-        match msg {
-          Some(mut decoded) => {
-            decoded.update_discount();
-            csv_file.write_record(&[now(), format!("{}", decoded.index), decoded.signature()]).unwrap();
-          },
-          None => {
-            rcv.close();
-            break;
-          }
+  loop {
+    if let Some(msg) = rcv.recv().await {
+      match msg {
+        Some(mut decoded) => {
+          decoded.update_discount();
+          csv_file.write_record(&[now(), format!("{}", decoded.index), decoded.signature()]).unwrap();
+        },
+        None => {
+          rcv.close();
+          break;
         }
       }
     }
-  });
+  }
+
+  println!("Done.");
 }
