@@ -7,7 +7,7 @@
             [digest]))
 
 (def host (or (System/getenv "REDIS_HOST") "127.0.0.1"))
-(def server-conn { :pool {} :spec { :host host }})
+(def server-conn { :pool { :max-idle-per-key 16 } :spec { :host host }})
 (defmacro with-connection [& body] `(car/wcar server-conn ~@body))
 
 (def discounts [0 5 10 15 20 25 30])
@@ -60,15 +60,18 @@
   (doall
     (map
       (fn [_](redis-reader pipe))
-      (repeat 4 :reader))))
+      (repeat 8 :reader))))
 
 (defn run []
-  (let [pipe (chan 1024 (map transform-event))
-        readers (spawn-readers pipe)
-        writer (csv-writer pipe)]
+  (let [redis-pipe (chan 4096)
+        messages-pipe (chan 4096)
+        transform (map transform-event)
+        pipeline (async/pipeline 32 messages-pipe transform redis-pipe)
+        readers (spawn-readers redis-pipe)
+        writer (csv-writer messages-pipe)]
     (<!! (async/map vector readers))
     (println "Readers Done...")
-    (async/close! pipe)
+    (async/close! redis-pipe)
     (<!! writer)
     (println "Writer Done...")))
 
