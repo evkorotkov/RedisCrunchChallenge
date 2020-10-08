@@ -21,42 +21,55 @@
 
 (defn calc-total [evt]
   (let [price (evt :price)
-        discount (/ (discounts (evt :wday)) 100)]
-    (round (* price (- 1 discount)))))
+        discount (discounts (evt :wday))
+        percent (/ discount 100)
+        ratio (- 1 percent)]
+    (round (* price ratio))))
 
-(defn handle-event [evt]
+(defn transform-event [evt]
   (let [parsed (json/read-str evt :key-fn keyword)
-        total (calc-total parsed)]
-    (assoc parsed :total total)))
-
-(defn signature [evt]
-  (-> evt json/write-str digest/md5))
+        total (calc-total parsed)
+        index (parsed :index)
+        updated (assoc parsed :total total)
+        encoded (json/write-str updated)
+        signature (digest/md5 encoded)]
+    [(now) (str index) signature]))
 
 (defn redis-reader [pipe]
   (async/thread
-    (loop [[marker, evt] (brpop)]
-      (if (some? evt)
-        (do
-          (>!! pipe { :payload (handle-event evt) })
-          (recur (brpop)))
-        (>!! pipe { :payload :none })))))
+    (loop []
+      (let [[marker, evt] (brpop)]
+        (if (some? evt)
+          (do
+            (>!! pipe evt)
+            (recur)))))
+    :done))
 
 (defn csv-writer [pipe]
   (async/thread
     (with-open [writer (io/writer (str "../output/clojure-" (now) ".csv"))]
       (loop []
-        (let [{ :keys [payload] } (<!! pipe)]
-          (if (= payload :none)
-            (async/close! pipe)
+        (let [row (<!! pipe)]
+          (if (some? row)
             (do
-              (csv/write-csv writer [[(now) (str (payload :index)) (signature payload)]])
-              (recur))))))))
+              (csv/write-csv writer [row])
+              (recur))))))
+    :done))
+
+(defn spawn-readers [pipe]
+  (doall
+    (map
+      (fn [_](redis-reader pipe))
+      (repeat 4 :reader))))
 
 (defn run []
-  (let [pipe (chan 1024)
-        reader (redis-reader pipe)
+  (let [pipe (chan 1024 (map transform-event))
+        readers (spawn-readers pipe)
         writer (csv-writer pipe)]
-    (<!! (async/map vector [reader writer]))
-    (println "Done.")))
+    (<!! (async/map vector readers))
+    (println "Readers Done...")
+    (async/close! pipe)
+    (<!! writer)
+    (println "Writer Done...")))
 
 (defn -main [& args] (run))
