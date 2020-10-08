@@ -30,6 +30,11 @@ services:
     build:
       context: .
       dockerfile: .docker/Dockerfile.elixir
+  clojure:
+    <<: *default-lang
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.clojure
   redis:
     image: redis:6.0.8-alpine
     command: redis-server
