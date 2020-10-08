@@ -11,7 +11,7 @@ use tokio::sync::mpsc;
 #[derive(Debug, Serialize, Deserialize)]
 struct Message {
   index: i32,
-  wday: u8,
+  wday: usize,
   payload: String,
   price: f32,
   user_id: i32,
@@ -24,25 +24,15 @@ impl Message {
   const DISCOUNTS: [f32; 7] = [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0];
 
   pub fn from_redis(result: Result<Vec<String>, RedisError>) -> Option<Message> {
-    match result {
-      Ok(payload) => {
-        match payload.get(1) {
-          Some(encoded) => {
-            match serde_json::from_str(encoded) {
-              Ok(decoded) => decoded,
-              _ => None,
-            }
-          },
-          _ => None
-        }
-      },
-      _ => None,
-    }
+    let payload = result.ok()?;
+    let encoded = payload.get(1)?;
+    return serde_json::from_str(encoded).ok();
   }
 
   pub fn update_discount(&mut self) {
-    let discount = Self::DISCOUNTS[self.wday as usize] / 100.0;
-    self.total = round::half_up((self.price * (1.0 - discount)).into(), 2) as f32;
+    let discount = Self::DISCOUNTS[self.wday] / 100.0;
+    let price = self.price * (1.0 - discount);
+    self.total = round::half_up(price.into(), 2) as f32;
   }
 
   pub fn signature(self) -> String {
@@ -60,13 +50,13 @@ fn now() -> String {
 fn redis_path() -> String {
   match env::var("REDIS_HOST") {
     Ok(host) => format!("redis://{}/", host),
-    Err(_) => panic!("Cant fetch ENV[REDIS_HOST] var"),
+    Err(_) => "redis://127.0.0.1/".to_string(),
   }
 }
 
 #[tokio::main]
 async fn main() {
-  let (snd, mut rcv) = mpsc::channel(256);
+  let (snd, mut rcv) = mpsc::channel(4096);
 
   let mut tasks = vec![];
 
