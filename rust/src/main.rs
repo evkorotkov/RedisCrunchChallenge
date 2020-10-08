@@ -8,6 +8,18 @@ use math::round;
 
 use tokio::sync::mpsc;
 
+fn now() -> String {
+  let elapsed = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+  return format!("{}", elapsed.as_millis());
+}
+
+fn redis_path() -> String {
+  match env::var("REDIS_HOST") {
+    Ok(host) => format!("redis://{}/", host),
+    Err(_) => "redis://127.0.0.1/".to_string(),
+  }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Message {
   index: i32,
@@ -35,22 +47,16 @@ impl Message {
     self.total = round::half_up(price.into(), 2) as f32;
   }
 
-  pub fn signature(self) -> String {
+  pub fn signature(&self) -> String {
     let encoded = serde_json::to_string(&self).unwrap();
     let digest = md5::compute(encoded);
     return format!("{:x}", digest);
   }
-}
 
-fn now() -> String {
-  let elapsed = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-  return format!("{}", elapsed.as_millis());
-}
-
-fn redis_path() -> String {
-  match env::var("REDIS_HOST") {
-    Ok(host) => format!("redis://{}/", host),
-    Err(_) => "redis://127.0.0.1/".to_string(),
+  pub fn csv_row(&mut self) -> Vec<String> {
+    self.update_discount();
+    let signature = self.signature();
+    return vec![now(), format!("{}", self.index), signature];
   }
 }
 
@@ -70,8 +76,8 @@ async fn main() {
       loop {
         let encoded = con.brpop("events_queue", 5);
         match Message::from_redis(encoded) {
-          Some(message) => {
-            if let Err(_) = snd2.send(Some(message)).await {
+          Some(mut message) => {
+            if let Err(_) = snd2.send(Some(message.csv_row())).await {
               break;
             }
           },
@@ -102,9 +108,8 @@ async fn main() {
   loop {
     if let Some(msg) = rcv.recv().await {
       match msg {
-        Some(mut decoded) => {
-          decoded.update_discount();
-          csv_file.write_record(&[now(), format!("{}", decoded.index), decoded.signature()]).unwrap();
+        Some(row) => {
+          csv_file.write_record(row).unwrap();
         },
         None => {
           rcv.close();
