@@ -5,9 +5,9 @@ defmodule RedisCrunchChallenge.GenStage.Supervisor do
   alias RedisCrunchChallenge.GenStage.Consumer
 
   @producers_count 10
-  @consumers_per_producer 5
+  @consumers_per_producer 10
 
-  def start_link(opts) do
+  def start_link(opts \\ []) do
     IO.puts "Processing GenStage"
 
     Supervisor.start_link(__MODULE__, :ok, opts)

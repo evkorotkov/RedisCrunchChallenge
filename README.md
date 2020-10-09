@@ -53,6 +53,6 @@ cd elixir
 mix deps.get
 mix deps.compile
 
-# Supported process modes: genstage, flow, broadway
+# Supported process modes: gen_server, gen_stage, flow, broadway
 mix process --mode <process_mode>
 ```

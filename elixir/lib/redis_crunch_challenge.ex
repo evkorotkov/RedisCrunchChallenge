@@ -11,8 +11,11 @@ defmodule RedisCrunchChallenge do
   end
 
   defp children do
+    import Supervisor.Spec, warn: false
+
     case app_mode() do
-      :genstage -> [{RedisCrunchChallenge.GenStage.Supervisor, restart: :transient, shutdown: 1000}]
+      :gen_server -> [supervisor(RedisCrunchChallenge.GenServer.Supervisor, [], restart: :transient, shutdown: 500)]
+      :gen_stage -> [supervisor(RedisCrunchChallenge.GenStage.Supervisor, [], restart: :transient, shutdown: 500)]
       :flow -> [{RedisCrunchChallenge.Flow, [list_name: "events_queue"]}]
       :broadway -> [{RedisCrunchChallenge.Broadway, []}]
       _ -> []

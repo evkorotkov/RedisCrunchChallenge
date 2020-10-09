@@ -18,11 +18,11 @@ defmodule RedisCrunchChallenge.DataSource do
     )
   end
 
-  defp redis_config do
+  def redis_config do
     Application.fetch_env!(:redis_crunch_challenge, :redis)
   end
 
-  defp brpop(pid, list_name) do
+  def brpop(pid, list_name) do
     Redix.command(pid, ["BRPOP", list_name, 0])
   end
 end

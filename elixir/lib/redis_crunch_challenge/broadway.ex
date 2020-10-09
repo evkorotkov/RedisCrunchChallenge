@@ -7,12 +7,12 @@ defmodule RedisCrunchChallenge.Broadway do
   alias RedisCrunchChallenge.GenStage.Producer
   alias RedisCrunchChallenge.CsvWriter
 
-  @producers_count 5
+  @producers_count 4
   @processors_count 40
   @max_demand 1000
   @min_demand 500
-  @batchers_count 20
-  @batch_size 2000
+  @batchers_count 40
+  @batch_size 1000
 
   def start_link(_opts) do
     IO.puts "Processing Broadway"

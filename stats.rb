@@ -38,7 +38,7 @@ class Stats
 
     values = th.values[1...-1]
     puts ""
-    puts "Avg items/s- #{values.inject(:+) / th.keys[1...-1].size}"
+    puts "Avg items/s- #{values.inject(:+) / values.size}"
     puts "Min items/s- #{values.min}"
     puts "Max items/s- #{values.max}"
     puts "Signature- #{md5.hexdigest}"
