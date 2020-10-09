@@ -6,14 +6,24 @@ use serde::{Deserialize, Serialize};
 use csv::Writer;
 use math::round;
 
-use tokio::runtime;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::TryRecvError;
+
+fn now() -> String {
+  let elapsed = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+  return format!("{}", elapsed.as_millis());
+}
+
+fn redis_path() -> String {
+  match env::var("REDIS_HOST") {
+    Ok(host) => format!("redis://{}/", host),
+    Err(_) => "redis://127.0.0.1/".to_string(),
+  }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Message {
   index: i32,
-  wday: u8,
+  wday: usize,
   payload: String,
   price: f32,
   user_id: i32,
@@ -26,68 +36,48 @@ impl Message {
   const DISCOUNTS: [f32; 7] = [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0];
 
   pub fn from_redis(result: Result<Vec<String>, RedisError>) -> Option<Message> {
-    match result {
-      Ok(payload) => {
-        match payload.get(1) {
-          Some(encoded) => {
-            match serde_json::from_str(encoded) {
-              Ok(decoded) => decoded,
-              _ => None,
-            }
-          },
-          _ => None
-        }
-      },
-      _ => None,
-    }
+    let payload = result.ok()?;
+    let encoded = payload.get(1)?;
+    return serde_json::from_str(encoded).ok();
   }
 
   pub fn update_discount(&mut self) {
-    let discount = Self::DISCOUNTS[self.wday as usize] / 100.0;
-    self.total = round::half_up((self.price * (1.0 - discount)).into(), 2) as f32;
+    let discount = Self::DISCOUNTS[self.wday] / 100.0;
+    let price = self.price * (1.0 - discount);
+    self.total = round::half_up(price.into(), 2) as f32;
   }
 
-  pub fn signature(self) -> String {
+  pub fn signature(&self) -> String {
     let encoded = serde_json::to_string(&self).unwrap();
     let digest = md5::compute(encoded);
     return format!("{:x}", digest);
   }
-}
 
-fn now() -> String {
-  let elapsed = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-  return format!("{}", elapsed.as_millis());
-}
-
-fn redis_path() -> String {
-  match env::var("REDIS_HOST") {
-    Ok(host) => format!("redis://{}/", host),
-    Err(_) => panic!("Cant fetch ENV[REDIS_HOST] var"),
+  pub fn csv_row(&mut self) -> Vec<String> {
+    self.update_discount();
+    let signature = self.signature();
+    return vec![now(), format!("{}", self.index), signature];
   }
 }
 
-fn main() {
-  let (snd, mut rcv) = mpsc::channel(256);
-
-  let mut threaded_rt = runtime::Builder::new()
-    .threaded_scheduler()
-    .build()
-    .unwrap();
+#[tokio::main]
+async fn main() {
+  let (snd, mut rcv) = mpsc::channel(4096);
 
   let mut tasks = vec![];
 
   for _ in 0..8 {
     let mut snd2 = snd.clone();
 
-    let handle = threaded_rt.spawn(async move {
+    let handle = tokio::spawn(async move {
       let client = redis::Client::open(redis_path()).unwrap();
       let mut con = client.get_connection().unwrap();
 
       loop {
         let encoded = con.brpop("events_queue", 5);
         match Message::from_redis(encoded) {
-          Some(message) => {
-            if let Err(err) = snd2.send(Some(message)).await {
+          Some(mut message) => {
+            if let Err(_) = snd2.send(Some(message.csv_row())).await {
               break;
             }
           },
@@ -101,7 +91,7 @@ fn main() {
     tasks.push(handle);
   }
 
-  threaded_rt.spawn(async move {
+  tokio::spawn(async move {
     let mut snd3 = snd.clone();
 
     for task in tasks {
@@ -113,22 +103,21 @@ fn main() {
     snd3.send(None).await
   });
 
-  threaded_rt.block_on(async move {
-    let mut csv_file = Writer::from_path(format!("../output/rust-{}.csv", now())).unwrap();
+  let mut csv_file = Writer::from_path(format!("../output/rust-{}.csv", now())).unwrap();
 
-    loop {
-      if let Some(msg) = rcv.recv().await {
-        match msg {
-          Some(mut decoded) => {
-            decoded.update_discount();
-            csv_file.write_record(&[now(), format!("{}", decoded.index), decoded.signature()]).unwrap();
-          },
-          None => {
-            rcv.close();
-            break;
-          }
+  loop {
+    if let Some(msg) = rcv.recv().await {
+      match msg {
+        Some(row) => {
+          csv_file.write_record(row).unwrap();
+        },
+        None => {
+          rcv.close();
+          break;
         }
       }
     }
-  });
+  }
+
+  println!("Done.");
 }
