@@ -4,7 +4,6 @@ require 'oj'
 require 'redis'
 require 'json'
 require 'csv'
-require 'connection_pool'
 require 'digest'
 
 class Worker
@@ -21,14 +20,13 @@ class Worker
     6 => 30
   }.freeze
 
-  attr_reader :threads_count, :threads, :redis_pool, :redis, :csv
+  attr_reader :threads_count, :threads, :redis, :csv
 
   def initialize(threads_count: nil)
     @threads_count = threads_count&.to_i || 1
     @threads = []
 
-    # @redis_pool = ConnectionPool.new(size: threads_count * 1.5) { Redis.new }
-    @redis = Redis.new
+    @redis = Redis.new(host: ENV['REDIS_HOST'])
     @csv = CSV.open("#{OUTPUT_FILE_NAME}.#{Time.now.to_i}", 'a+')
   end
 
@@ -66,10 +64,6 @@ class Worker
   end
 
   def handle_events
-    # _, data = redis_pool.with do |redis|
-    #   redis.brpop(:events_queue, 5)
-    # end
-
     _, data = redis.brpop(:events_queue, 5)
 
     if data.nil?
