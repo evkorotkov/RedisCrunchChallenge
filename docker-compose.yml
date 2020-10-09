@@ -35,6 +35,11 @@ services:
     build:
       context: .
       dockerfile: .docker/Dockerfile.clojure
+  golang:
+    <<: *default-lang
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.golang
   redis:
     image: redis:6.0.8-alpine
     command: redis-server

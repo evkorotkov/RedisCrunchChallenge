@@ -111,7 +111,7 @@ func main() {
 		DB:       0,
 	})
 
-	file_name := "../output/go.csv." + strconv.FormatInt(time.Now().Unix(), 10)
+	file_name := "../output/golang.csv." + strconv.FormatInt(time.Now().Unix(), 10)
 	file, _ := os.OpenFile(file_name, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	defer file.Close()
 
