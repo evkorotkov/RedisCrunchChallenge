@@ -1,7 +1,27 @@
 output/*
 !output/.keep
 
+# Node
+
 js/node_modules/
-rust/target/
-golang/main
+
+# Clojure
+
 clojure/.cpcache
+
+# Rust
+
+rust/target/
+
+# Go
+
+golang/main
+
+# Elixir
+
+elixir/_build/
+elixir/deps/
+elixir/.fetch
+elixir/erl_crash.dump
+elixir/*.ez
+elixir/elixir-*.tar
