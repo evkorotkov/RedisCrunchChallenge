@@ -67,7 +67,7 @@ async fn main() {
   let mut tasks = vec![];
 
   for _ in 0..8 {
-    let mut snd2 = snd.clone();
+    let snd2 = snd.clone();
 
     let handle = tokio::spawn(async move {
       let client = redis::Client::open(redis_path()).unwrap();
@@ -92,7 +92,7 @@ async fn main() {
   }
 
   tokio::spawn(async move {
-    let mut snd3 = snd.clone();
+    let snd3 = snd.clone();
 
     for task in tasks {
       if let Err(_) = task.await {
