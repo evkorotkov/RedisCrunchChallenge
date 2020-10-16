@@ -10,7 +10,14 @@ const writer = csvWriter({ sendHeaders: false, headers: ['ts', 'idx', 'signature
 const filepath = path.resolve(__filename, '..', `../output/js-workers-${Date.now()}.csv`);
 writer.pipe(fs.createWriteStream(filepath, { flags: 'w+' }));
 
-const workers = os.cpus().map(() => {
+const times = function*(times) {
+  let i = 0;
+  while(i++ < times) {
+    yield i;
+  }
+}
+
+const workers = [...times(16)].map(() => {
   return new Promise((resolve, reject) => {
     const worker = new Worker(path.resolve(__dirname, './worker.js'));
 
