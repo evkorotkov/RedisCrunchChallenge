@@ -25,3 +25,5 @@ elixir/.fetch
 elixir/erl_crash.dump
 elixir/*.ez
 elixir/elixir-*.tar
+
+.bundle

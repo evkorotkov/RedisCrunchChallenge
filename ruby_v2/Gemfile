@@ -1,0 +1,11 @@
+source 'https://rubygems.org'
+
+gem 'irb', require: false
+
+gem 'oj'
+gem 'oj_mimic_json'
+
+gem 'pry'
+
+gem 'connection_pool'
+gem 'redic'
