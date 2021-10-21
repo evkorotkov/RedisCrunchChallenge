@@ -2,7 +2,7 @@ FROM golang:1.15-alpine
 
 ENV APP_ROOT=/app/golang
 
-RUN apk add --update --no-cache redis
+RUN apk add --update --no-cache redis ruby
 
 WORKDIR ${APP_ROOT}
 

@@ -1,42 +1,101 @@
 version: '3.4'
 
 x-lang: &default-lang
-  command: /bin/sh -c "redis-cli -h redis --eval /populate.lua && sh"
   volumes:
     - ./populate.lua:/populate.lua
-    - .:/app
-  environment:
-    REDIS_HOST: redis
+    - ./stats_last.sh:/app/stats_last.sh
+    - ./stats.rb:/app/stats.rb
+    - ./output/:/app/output/
   depends_on:
     - redis
 services:
   ruby:
     <<: *default-lang
+    environment:
+      - REDIS_HOST=redis
+      - WORKERS=4
+      - THREADS=4
+    command: /bin/sh -c "
+      redis-cli -h redis --eval /populate.lua &&
+      cd .. &&
+      bash ./ruby/runner.sh $WORKERS $THREADS &&
+      bash ./stats_last.sh ruby"
     build:
       context: .
       dockerfile: .docker/Dockerfile.ruby
+  ruby_v2:
+    <<: *default-lang
+    environment:
+      - REDIS_HOST=redis
+      - WORKERS=4
+      - THREADS=4
+    command: /bin/sh -c "
+      redis-cli -h redis --eval /populate.lua &&
+      cd .. &&
+      bash ./ruby_v2/runner.sh $WORKERS $THREADS &&
+      bash ./stats_last.sh ruby"
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.ruby_v2
   node:
     <<: *default-lang
+    environment:
+      - REDIS_HOST=redis
+    command: /bin/sh -c "
+      redis-cli -h redis --eval /populate.lua &&
+      node index.js &&
+      cd .. &&
+      sh ./stats_last.sh js"
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.node
+  node_workers:
+    <<: *default-lang
+    environment:
+      - REDIS_HOST=redis
+      - WORKERS=4
+      - THREADS=4
+    command: /bin/sh -c "
+      redis-cli -h redis --eval /populate.lua &&
+      bash ./runner.sh $WORKERS $THREADS &&
+      cd .. &&
+      bash ./stats_last.sh js-workers"
     build:
       context: .
       dockerfile: .docker/Dockerfile.node
   rust:
     <<: *default-lang
+    environment:
+      - REDIS_HOST=redis
+      - WORKERS=4
+    command: /bin/sh -c "
+      redis-cli -h redis --eval /populate.lua &&
+      WORKERS=$WORKERS ./target/release/rust &&
+      cd .. &&
+      sh ./stats_last.sh rust"
     build:
       context: .
       dockerfile: .docker/Dockerfile.rust
-  elixir:
-    <<: *default-lang
-    build:
-      context: .
-      dockerfile: .docker/Dockerfile.elixir
-  clojure:
-    <<: *default-lang
-    build:
-      context: .
-      dockerfile: .docker/Dockerfile.clojure
+  # elixir:
+  #   <<: *default-lang
+  #   build:
+  #     context: .
+  #     dockerfile: .docker/Dockerfile.elixir
+  # clojure:
+  #   <<: *default-lang
+  #   build:
+  #     context: .
+  #     dockerfile: .docker/Dockerfile.clojure
   golang:
     <<: *default-lang
+    environment:
+      - REDIS_HOST=redis
+      - WORKERS=4
+    command: /bin/sh -c "
+      redis-cli -h redis --eval /populate.lua &&
+      WORKERS=$WORKERS ./main &&
+      cd .. &&
+      sh ./stats_last.sh golang"
     build:
       context: .
       dockerfile: .docker/Dockerfile.golang

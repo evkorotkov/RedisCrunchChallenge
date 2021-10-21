@@ -1,11 +1,11 @@
 FROM ruby:2.7.2-alpine
 
-ENV APP_ROOT=/app/ruby
+ENV APP_ROOT=/app/ruby_v2
 
 RUN apk add --update --no-cache redis build-base ruby-dev bash
 
 WORKDIR ${APP_ROOT}
-COPY ruby/ ./
+COPY ruby_v2/ ./
 
 RUN bundle update --bundler
 RUN bundle install

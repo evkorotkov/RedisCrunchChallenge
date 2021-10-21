@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const csvWriter = require('csv-write-stream')
 
 const Redis = require('ioredis');
-const redis = new Redis();
+const redis = new Redis(6379, process.env.REDIS_HOST || '127.0.0.1');
 
 const hash = (payload) => crypto.createHash('md5').update(payload).digest('hex');
 
