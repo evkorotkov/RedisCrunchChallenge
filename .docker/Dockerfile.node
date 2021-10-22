@@ -2,6 +2,9 @@ FROM node:14.12-alpine
 
 ENV APP_ROOT=/app/js
 
-RUN apk add --update --no-cache redis ruby=2.6.6-r2
+RUN apk add --update --no-cache bash redis ruby
 
 WORKDIR ${APP_ROOT}
+COPY js/ ./
+
+RUN npm install

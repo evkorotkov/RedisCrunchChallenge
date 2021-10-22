@@ -4,7 +4,7 @@ require 'oj'
 require 'redic'
 require 'json'
 require 'csv'
-require 'digest'
+require 'openssl'
 require 'connection_pool'
 
 class Worker
@@ -27,7 +27,7 @@ class Worker
     @threads_count = threads_count&.to_i || 1
     @threads = []
 
-    @redis_pool = ConnectionPool.new(size: @threads_count * 1.5) { Redic.new }
+    @redis_pool = ConnectionPool.new(size: @threads_count * 1.5) { Redic.new("redis://#{ENV['REDIS_HOST']}:6379") }
     @csv = CSV.open("#{OUTPUT_FILE_NAME}.#{Time.now.to_i}", 'a+')
   end
 
@@ -86,7 +86,7 @@ class Worker
   def process_event(data)
     data[:total] = (data[:price] * (1 - DISCOUNTS_MAP.fetch(data[:wday], 0) / 100.0)).round(2)
 
-    Digest::MD5.hexdigest(JSON.dump(data))
+    OpenSSL::Digest::MD5.hexdigest(JSON.dump(data))
   end
 end
 

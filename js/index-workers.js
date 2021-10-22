@@ -8,7 +8,7 @@ const csvWriter = require('csv-write-stream');
 
 const writer = csvWriter({ sendHeaders: false, headers: ['ts', 'idx', 'signature'] });
 const filepath = path.resolve(__filename, '..', `../output/js-workers-${Date.now()}.csv`);
-writer.pipe(fs.createWriteStream(filepath, { flags: 'w+' }));
+writer.pipe(fs.createWriteStream(filepath, { flags: 'a+' }));
 
 const times = function*(times) {
   let i = 0;
@@ -17,7 +17,9 @@ const times = function*(times) {
   }
 }
 
-const workers = [...times(16)].map(() => {
+const workers = [...times(process.argv[2])].map(() => {
+  console.log('starting...')
+
   return new Promise((resolve, reject) => {
     const worker = new Worker(path.resolve(__dirname, './worker.js'));
 
@@ -37,4 +39,7 @@ const workers = [...times(16)].map(() => {
   });
 });
 
-Promise.all(workers).then(() => process.exit());
+Promise.all(workers).then(() => {
+  console.log('stopping...')
+  process.exit()
+});

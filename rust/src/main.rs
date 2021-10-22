@@ -20,6 +20,13 @@ fn redis_path() -> String {
   }
 }
 
+fn workers_count() -> String {
+  match env::var("WORKERS") {
+    Ok(val) => val,
+    Err(_) => "4".to_string(),
+  }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Message {
   index: i32,
@@ -65,8 +72,10 @@ async fn main() {
   let (snd, mut rcv) = mpsc::channel(4096);
 
   let mut tasks = vec![];
+  let workers_count = workers_count().parse::<i32>().unwrap();
 
-  for _ in 0..8 {
+  for _ in 0..workers_count {
+    println!("starting...");
     let snd2 = snd.clone();
 
     let handle = tokio::spawn(async move {
