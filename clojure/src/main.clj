@@ -6,7 +6,7 @@
             [clojure.java.io :as io]
             [digest]))
 
-(def host (or (System/getenv "REDIS_HOST") "127.0.0.1"))
+(def host (or (System/getenv "REDIS_HOST") "redis"))
 (def server-conn { :pool { :max-idle-per-key 16 } :spec { :host host }})
 (defmacro with-connection [& body] `(car/wcar server-conn ~@body))
 
@@ -47,7 +47,7 @@
 
 (defn csv-writer [pipe]
   (async/thread
-    (with-open [writer (io/writer (str "../output/clojure-" (now) ".csv"))]
+    (with-open [writer (io/writer (str "/scripts/output/clojure-" (now) ".csv"))]
       (loop []
         (let [row (<!! pipe)]
           (if (some? row)
@@ -60,7 +60,7 @@
   (doall
     (map
       (fn [_](redis-reader pipe))
-      (repeat 8 :reader))))
+      (repeat 16 :reader))))
 
 (defn run []
   (let [redis-pipe (chan 4096)

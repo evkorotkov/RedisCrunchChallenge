@@ -2,15 +2,13 @@
 
 require 'oj'
 require 'redis'
+require 'hiredis-client'
 require 'json'
 require 'csv'
 require 'openssl'
-require 'connection_pool'
+require 'concurrent-ruby'
 
-class Worker
-  STOP_SIGNALS = ['QUIT', 'INT', 'TERM'].freeze
-  OUTPUT_FILE_NAME = 'output/ruby.csv'
-  CSV_MUTEX = Mutex.new
+class Reader
   DISCOUNTS_MAP = {
     0 => 0,
     1 => 5,
@@ -21,68 +19,42 @@ class Worker
     6 => 30
   }.freeze
 
-  attr_reader :threads_count, :threads, :redis_pool, :csv
+  BRPOP_OPTIONS = { timeout: 5 }.freeze
 
-  def initialize(threads_count: nil)
-    @threads_count = threads_count&.to_i || 1
-    @threads = []
+  attr_reader :redis, :thread, :results
 
-    # @redis = Redis.new(host: ENV['REDIS_HOST'])
-    @redis_pool = ConnectionPool.new(size: @threads_count * 1.5) { Redis.new(host: ENV['REDIS_HOST']) }
-    @csv = CSV.open("#{OUTPUT_FILE_NAME}.#{Time.now.to_i}", 'a+')
+  def initialize(results)
+    @redis = Redis.new(driver: :hiredis, host: ENV['REDIS_HOST'])
+    @results = results
   end
 
-  def run
-    setup_stop_signal
-    spawn_threads
-  end
-
-  private
-
-  def setup_stop_signal
-    STOP_SIGNALS.each do |signal|
-      trap(signal) do
-        puts "stopping..."
-        @stopped = true
+  def start
+    @thread = Thread.new do
+      while !results.closed?
+        process_events
       end
     end
   end
 
-  def spawn_threads
-    threads_count.times.each do
-      @threads << Thread.new do
-        while true
-          if @stopped || @finished
-            puts "stopped..."
-            Thread.current.exit
-          end
-
-          handle_events
-        end
-      end
-    end
-
-    @threads.each(&:join)
+  def join
+    thread.join
   end
 
-  def handle_events
-    # _, data = redis.brpop(:events_queue, 5)
+  def process_events
+    popped = redis.brpop(:events_queue, BRPOP_OPTIONS)
 
-    _, data = redis_pool.with do |redis|
-      redis.brpop(:events_queue, 5)
-    end
+    if popped.nil?
+      results.close unless results.closed?
 
-    if data.nil?
-      @finished = true
       return
     end
+
+    _, data = popped
 
     data = JSON.parse(data, symbolize_names: true)
     signature = process_event(data)
 
-    CSV_MUTEX.synchronize do
-      csv << [Time.now.to_i, data[:index], signature]
-    end
+    results.push([Time.now.to_i, data[:index], signature])
   end
 
   def process_event(data)
@@ -92,4 +64,99 @@ class Worker
   end
 end
 
-Worker.new(threads_count: ARGV[0]).run
+class Writer
+  attr_reader :csv, :thread, :results
+
+  def initialize(results)
+    @csv = CSV.open("/scripts/output/ruby-#{Time.now.to_i}.csv", 'a+')
+
+    @results = results
+  end
+
+  def start
+    @thread = Thread.new do
+      written = 0
+
+      checker = Concurrent::TimerTask.new(execution_interval: 1) do
+        puts "Written: #{written} Size: #{results.size} Waiting: #{results.num_waiting}"
+        written = 0
+      end
+
+      checker.execute
+
+      while !results.closed?
+        item = results.pop
+
+        unless item.nil?
+          written = written + 1
+          csv << item
+        end
+      end
+    end
+  end
+
+  def join
+    thread.join
+  end
+end
+
+class Watcher
+  STOP_SIGNALS = ['QUIT', 'INT', 'TERM'].freeze
+
+  attr_reader :results, :thread
+
+  def initialize(results)
+    @result = results
+  end
+
+  def start
+    @thread = Thread.new do
+      STOP_SIGNALS.each do |signal|
+        trap(signal) do
+          puts "Got, #{signal}. Stopping..."
+
+          stop
+        end
+      end
+    end
+  end
+
+  def stop
+    results.close
+  end
+
+  def join
+    thread.join
+  end
+end
+
+class Worker
+  attr_reader :threads
+
+  def initialize
+    @threads = []
+  end
+
+  def run
+    results = SizedQueue.new(1024)
+
+    watcher = Watcher.new(results)
+    writer = Writer.new(results)
+
+    threads << watcher
+    threads << writer
+
+    threads_count.times.each do
+      threads << Reader.new(results)
+    end
+
+    threads.each(&:start)
+    threads.each(&:join)
+  end
+
+  def threads_count
+    (ENV['WORKERS'] || Concurrent.processor_count).to_i
+  end
+end
+
+Worker.new.run

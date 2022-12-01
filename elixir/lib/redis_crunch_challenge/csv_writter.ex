@@ -7,9 +7,9 @@ defmodule RedisCrunchChallenge.CsvWriter do
   end
 
   def output_file do
-    file_name = Application.fetch_env!(:redis_crunch_challenge, :output_file_name)
+    file_name = Application.fetch_env!(:redis_crunch_challenge, :output_dir)
     unix_time = DateTime.utc_now() |> DateTime.to_unix()
 
-    "#{file_name}.#{unix_time}.csv"
+    "#{file_name}-#{unix_time}.csv"
   end
 end

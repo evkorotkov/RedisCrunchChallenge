@@ -17,7 +17,7 @@ class Stats
 
   def present
     th = Hash.new(0)
-    signatures = SortedSet.new
+    signatures = Set.new
 
     CSV.foreach(@file_name) do |row|
       time = row[0]
@@ -34,7 +34,7 @@ class Stats
     end
 
     md5 = Digest::MD5.new
-    signatures.each { |s| md5 << s.signature }
+    signatures.sort.each { |s| md5 << s.signature }
 
     values = th.values[1...-1]
     puts ""

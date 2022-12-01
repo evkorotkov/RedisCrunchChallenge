@@ -9,7 +9,6 @@ require 'connection_pool'
 
 class Worker
   STOP_SIGNALS = ['QUIT', 'INT', 'TERM'].freeze
-  OUTPUT_FILE_NAME = 'output/ruby.csv'
   CSV_MUTEX = Mutex.new
   DISCOUNTS_MAP = {
     0 => 0,
@@ -28,7 +27,7 @@ class Worker
     @threads = []
 
     @redis_pool = ConnectionPool.new(size: @threads_count * 1.5) { Redic.new("redis://#{ENV['REDIS_HOST']}:6379") }
-    @csv = CSV.open("#{OUTPUT_FILE_NAME}.#{Time.now.to_i}", 'a+')
+    @csv = CSV.open("/scripts/output/ruby_v2-#{Time.now.to_i}.csv", 'a+')
   end
 
   def run

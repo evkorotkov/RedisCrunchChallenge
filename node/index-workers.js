@@ -6,18 +6,20 @@ const fs = require('fs');
 
 const csvWriter = require('csv-write-stream');
 
+const threads = Number.parseInt(process.argv[2], 10) || os.cpus().length;
+
 const writer = csvWriter({ sendHeaders: false, headers: ['ts', 'idx', 'signature'] });
-const filepath = path.resolve(__filename, '..', `../output/js-workers-${Date.now()}.csv`);
+const filepath = `/scripts/output/node-${Date.now()}.csv`;
 writer.pipe(fs.createWriteStream(filepath, { flags: 'a+' }));
 
 const times = function*(times) {
   let i = 0;
-  while(i++ < times) {
+  while (i++ < times) {
     yield i;
   }
-}
+};
 
-const workers = [...times(process.argv[2])].map(() => {
+const workers = [...times(threads)].map(() => {
   console.log('starting...')
 
   return new Promise((resolve, reject) => {

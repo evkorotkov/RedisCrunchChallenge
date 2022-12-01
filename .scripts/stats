@@ -1,0 +1,6 @@
+#!/bin/bash
+
+file_name=$(ls /scripts/output | grep ${1} | tail -n 1)
+echo "File: ${file_name}"
+
+ruby /scripts/summarize.rb /scripts/output/$file_name

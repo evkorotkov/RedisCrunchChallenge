@@ -19,7 +19,7 @@ const discounts = [
 ];
 
 const writer = csvWriter({ sendHeaders: false, headers: ['ts', 'idx', 'signature'] });
-const filepath = path.resolve(__filename, '..', `../output/js-${Date.now()}.csv`);
+const filepath = `/scripts/output/node-${Date.now()}.csv`;
 writer.pipe(fs.createWriteStream(filepath, { flags: 'w+' }));
 
 const round = (val) => Math.round(val * 100) / 100;

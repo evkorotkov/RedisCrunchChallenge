@@ -1,10 +1,9 @@
 source 'https://rubygems.org'
 
-gem 'irb', require: false
 gem 'oj'
 gem 'oj_mimic_json'
 gem 'pry'
 
-gem 'connection_pool'
-gem 'hiredis'
-gem 'redis', '~> 3', require: ['redis', 'redis/connection/hiredis']
+gem 'hiredis-client'
+gem 'redis', '5.0.5'
+gem 'concurrent-ruby', '1.1.10'

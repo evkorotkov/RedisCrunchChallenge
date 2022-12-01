@@ -1,31 +1,34 @@
-# Usage
+# Usage in docker:
 
+## 1. Populate:
 ```bash
-redis-cli --eval populate.lua
+/scripts/populate
 ```
 
+## 2. Run the language implementation (see below)
+## 3. Compute stats (e.g. ruby):
 ```bash
-./stats_last.sh <ruby | js | etc..>
+/scripts/stats ruby
 ```
+
+# Implementations:
 
 ## Ruby
 
 ```bash
-./ruby/runner.sh <processes_count> <threads_count>
+./runner.sh <processes_count> <threads_count>
 ```
 
 ## Golang
 
 ```bash
-cd golang/
-make build
+go build main
 WORKERS=<workers_count> ./main
 ```
 
 ## Node
 
 ```bash
-cd js
 npm install
 node index.js # or node index-workers.js
 ```
@@ -33,7 +36,6 @@ node index.js # or node index-workers.js
 ## Rust
 
 ```bash
-cd rust
 cargo build --release
 ./target/release/rust
 ```
@@ -41,18 +43,12 @@ cargo build --release
 ## Clojure
 
 ```bash
-cd clojure
 clj -m main
 ```
-
 
 ## Elixir
 
 ```elixir
-cd elixir
-mix deps.get
-mix deps.compile
-
 # Supported process modes: gen_server, gen_stage, flow, broadway
 mix process --mode <process_mode>
 ```

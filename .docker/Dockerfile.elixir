@@ -1,9 +1,0 @@
-FROM elixir:1.10.4-alpine
-
-ENV APP_ROOT=/app/elixir
-
-RUN apk add --update --no-cache redis ruby=2.6.6-r2
-
-WORKDIR ${APP_ROOT}
-
-RUN mix local.hex --force && mix local.rebar --force

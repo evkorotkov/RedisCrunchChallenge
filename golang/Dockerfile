@@ -1,9 +1,13 @@
-FROM golang:1.15
+FROM golang:1.20.1-alpine3.16
 
-WORKDIR /app
+ENV APP_ROOT=/golang
 
-COPY go.mod go.sum ./
+RUN apk add --update --no-cache bash redis ruby
+
+WORKDIR ${APP_ROOT}
+
+COPY golang/go.mod golang/go.sum ./
 RUN go mod download
 
-ADD . /app
-RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+COPY golang .
+RUN go build -o main .
