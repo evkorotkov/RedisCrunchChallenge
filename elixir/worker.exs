@@ -99,7 +99,7 @@ processes_count =
        {count, _} <- Integer.parse(count) do
     count
   else
-    _ -> 400
+    _ -> System.schedulers() * 50
   end
 
 redis_pool_size = (processes_count / 10) |> round() |> max(1)
