@@ -1,4 +1,4 @@
-FROM elixir:1.10.4-alpine
+FROM hexpm/elixir:1.14.3-erlang-25.2.3-alpine-3.17.0
 
 ENV APP_ROOT=/elixir
 
@@ -8,5 +8,3 @@ WORKDIR ${APP_ROOT}
 COPY elixir .
 
 RUN mix local.hex --force && mix local.rebar --force
-RUN mix deps.get
-RUN mix deps.compile

@@ -49,6 +49,5 @@ clj -m main
 ## Elixir
 
 ```elixir
-# Supported process modes: gen_server, gen_stage, flow, broadway
-mix process --mode <process_mode>
+elixir worker.exs [processes_count]
 ```

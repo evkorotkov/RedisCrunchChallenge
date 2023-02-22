@@ -14,8 +14,7 @@ services:
       context: .
       dockerfile: ./ruby/Dockerfile
     depends_on:
-    - redis
-
+      - redis
   ruby_v2:
     environment:
       <<: *common-env
@@ -26,8 +25,7 @@ services:
       context: .
       dockerfile: ./ruby_v2/Dockerfile
     depends_on:
-    - redis
-
+      - redis
   node:
     # TODO: add mode switch
     environment:
@@ -39,8 +37,7 @@ services:
       context: .
       dockerfile: ./node/Dockerfile
     depends_on:
-    - redis
-
+      - redis
   rust:
     environment:
       <<: *common-env
@@ -51,8 +48,7 @@ services:
       context: .
       dockerfile: ./rust/Dockerfile
     depends_on:
-    - redis
-
+      - redis
   elixir:
     environment:
       <<: *common-env
@@ -63,8 +59,7 @@ services:
       context: .
       dockerfile: ./elixir/Dockerfile
     depends_on:
-    - redis
-
+      - redis
   clojure:
     environment:
       <<: *common-env
@@ -75,8 +70,7 @@ services:
       context: .
       dockerfile: ./clojure/Dockerfile
     depends_on:
-    - redis
-
+      - redis
   golang:
     environment:
       <<: *common-env
@@ -92,5 +86,7 @@ services:
   redis:
     image: redis:7.0.5-alpine3.17
     command: redis-server
+    volumes:
+      - ./populate.lua:/populate.lua
     ports:
       - 6379:6379
