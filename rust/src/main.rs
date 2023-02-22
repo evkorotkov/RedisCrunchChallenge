@@ -1,5 +1,6 @@
 use std::time::SystemTime;
 use std::env;
+use std::thread;
 
 use redis::{Commands, RedisError};
 use serde::{Deserialize, Serialize};
@@ -20,10 +21,10 @@ fn redis_path() -> String {
   }
 }
 
-fn workers_count() -> String {
+fn workers_count() -> usize {
   match env::var("WORKERS") {
-    Ok(val) => val,
-    Err(_) => "4".to_string(),
+    Ok(val) => val.parse::<usize>().unwrap(),
+    Err(_) => thread::available_parallelism().unwrap().get(),
   }
 }
 
@@ -72,10 +73,10 @@ async fn main() {
   let (snd, mut rcv) = mpsc::channel(4096);
 
   let mut tasks = vec![];
-  let workers_count = workers_count().parse::<i32>().unwrap();
+  let workers_count = workers_count();
 
-  for _ in 0..workers_count {
-    println!("starting...");
+  for idx in 0..workers_count {
+    println!("Starting worker {}...", idx);
     let snd2 = snd.clone();
 
     let handle = tokio::spawn(async move {
@@ -112,18 +113,15 @@ async fn main() {
     snd3.send(None).await
   });
 
-  let mut csv_file = Writer::from_path(format!("../output/rust-{}.csv", now())).unwrap();
+  let mut csv_file = Writer::from_path(format!("/scripts/output/rust-{}.csv", now())).unwrap();
 
   loop {
     if let Some(msg) = rcv.recv().await {
-      match msg {
-        Some(row) => {
-          csv_file.write_record(row).unwrap();
-        },
-        None => {
-          rcv.close();
-          break;
-        }
+      if let Some(row) = msg {
+        csv_file.write_record(row).unwrap();
+      } else {
+        rcv.close();
+        break;
       }
     }
   }

@@ -3,6 +3,6 @@
   "name": "redis-crunch-challenge",
   "dependencies": {
     "csv-write-stream": "^2.0.0",
-    "ioredis": "^4.17.3"
+    "ioredis": "^5.3.1"
   }
 }

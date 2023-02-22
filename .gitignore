@@ -1,9 +1,9 @@
-output/*
-!output/.keep
+.scripts/output/*
+!.scripts/output/.keep
 
 # Node
 
-js/node_modules/
+node/node_modules/
 
 # Clojure
 

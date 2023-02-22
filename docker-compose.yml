@@ -1,106 +1,96 @@
-version: '3.4'
+version: '3.9'
 
-x-lang: &default-lang
-  volumes:
-    - ./populate.lua:/populate.lua
-    - ./stats_last.sh:/app/stats_last.sh
-    - ./stats.rb:/app/stats.rb
-    - ./output/:/app/output/
-  depends_on:
-    - redis
+x-env: &common-env
+  REDIS_HOST: redis
+
 services:
   ruby:
-    <<: *default-lang
     environment:
-      - REDIS_HOST=redis
-      - WORKERS=4
-      - THREADS=4
-    command: /bin/sh -c "
-      redis-cli -h redis --eval /populate.lua &&
-      cd .. &&
-      bash ./ruby/runner.sh $WORKERS $THREADS &&
-      bash ./stats_last.sh ruby"
+      <<: *common-env
+    volumes:
+      - ./ruby:/ruby
+      - .scripts:/scripts
     build:
       context: .
-      dockerfile: .docker/Dockerfile.ruby
+      dockerfile: ./ruby/Dockerfile
+    depends_on:
+    - redis
+
   ruby_v2:
-    <<: *default-lang
     environment:
-      - REDIS_HOST=redis
-      - WORKERS=4
-      - THREADS=4
-    command: /bin/sh -c "
-      redis-cli -h redis --eval /populate.lua &&
-      cd .. &&
-      bash ./ruby_v2/runner.sh $WORKERS $THREADS &&
-      bash ./stats_last.sh ruby"
+      <<: *common-env
+    volumes:
+      - ./ruby_v2:/ruby_v2
+      - .scripts:/scripts
     build:
       context: .
-      dockerfile: .docker/Dockerfile.ruby_v2
+      dockerfile: ./ruby_v2/Dockerfile
+    depends_on:
+    - redis
+
   node:
-    <<: *default-lang
+    # TODO: add mode switch
     environment:
-      - REDIS_HOST=redis
-    command: /bin/sh -c "
-      redis-cli -h redis --eval /populate.lua &&
-      node index.js &&
-      cd .. &&
-      sh ./stats_last.sh js"
+      <<: *common-env
+    volumes:
+      - ./node:/node
+      - .scripts:/scripts
     build:
       context: .
-      dockerfile: .docker/Dockerfile.node
-  node_workers:
-    <<: *default-lang
-    environment:
-      - REDIS_HOST=redis
-      - WORKERS=4
-      - THREADS=4
-    command: /bin/sh -c "
-      redis-cli -h redis --eval /populate.lua &&
-      bash ./runner.sh $WORKERS $THREADS &&
-      cd .. &&
-      bash ./stats_last.sh js-workers"
-    build:
-      context: .
-      dockerfile: .docker/Dockerfile.node
+      dockerfile: ./node/Dockerfile
+    depends_on:
+    - redis
+
   rust:
-    <<: *default-lang
     environment:
-      - REDIS_HOST=redis
-      - WORKERS=4
-    command: /bin/sh -c "
-      redis-cli -h redis --eval /populate.lua &&
-      WORKERS=$WORKERS ./target/release/rust &&
-      cd .. &&
-      sh ./stats_last.sh rust"
+      <<: *common-env
+    volumes:
+      - ./rust:/rust
+      - .scripts:/scripts
     build:
       context: .
-      dockerfile: .docker/Dockerfile.rust
-  # elixir:
-  #   <<: *default-lang
-  #   build:
-  #     context: .
-  #     dockerfile: .docker/Dockerfile.elixir
-  # clojure:
-  #   <<: *default-lang
-  #   build:
-  #     context: .
-  #     dockerfile: .docker/Dockerfile.clojure
+      dockerfile: ./rust/Dockerfile
+    depends_on:
+    - redis
+
+  elixir:
+    environment:
+      <<: *common-env
+    volumes:
+      - ./elixir:/elixir
+      - .scripts:/scripts
+    build:
+      context: .
+      dockerfile: ./elixir/Dockerfile
+    depends_on:
+    - redis
+
+  clojure:
+    environment:
+      <<: *common-env
+    volumes:
+      - ./clojure:/clojure
+      - .scripts:/scripts
+    build:
+      context: .
+      dockerfile: ./clojure/Dockerfile
+    depends_on:
+    - redis
+
   golang:
-    <<: *default-lang
     environment:
-      - REDIS_HOST=redis
-      - WORKERS=4
-    command: /bin/sh -c "
-      redis-cli -h redis --eval /populate.lua &&
-      WORKERS=$WORKERS ./main &&
-      cd .. &&
-      sh ./stats_last.sh golang"
+      <<: *common-env
+    volumes:
+      - ./golang:/golang
+      - .scripts:/scripts
     build:
       context: .
-      dockerfile: .docker/Dockerfile.golang
+      dockerfile: ./golang/Dockerfile
+    depends_on:
+    - redis
+
   redis:
-    image: redis:6.0.8-alpine
+    image: redis:7.0.5-alpine3.17
     command: redis-server
     ports:
       - 6379:6379

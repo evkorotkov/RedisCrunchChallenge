@@ -1,6 +1,6 @@
-FROM rust:1.47.0-alpine
+FROM rust:1.67.1-alpine3.16
 
-ENV APP_ROOT=/app/rust
+ENV APP_ROOT=/rust
 
 RUN apk add --update --no-cache bash ruby redis musl-dev
 

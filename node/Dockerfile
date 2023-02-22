@@ -1,10 +1,10 @@
-FROM node:14.12-alpine
+FROM node:18.14-alpine3.16
 
-ENV APP_ROOT=/app/js
+ENV APP_ROOT=/node
 
 RUN apk add --update --no-cache bash redis ruby
 
 WORKDIR ${APP_ROOT}
-COPY js/ ./
+COPY node/ ./
 
 RUN npm install

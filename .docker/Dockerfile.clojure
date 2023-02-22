@@ -1,8 +1,0 @@
-FROM clojure:openjdk-16-tools-deps-1.10.1.561-alpine
-
-ENV APP_ROOT=/app/clojure
-
-RUN apk --no-cache add rlwrap --repository http://dl-3.alpinelinux.org/alpine/edge/testing/ --allow-untrusted
-RUN apk add --update --no-cache redis
-
-WORKDIR ${APP_ROOT}
