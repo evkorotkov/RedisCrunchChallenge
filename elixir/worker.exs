@@ -114,7 +114,7 @@ Supervisor.start_link(
 unix_time = DateTime.utc_now() |> DateTime.to_unix()
 
 file =
-  File.open!("/scripts/output/elixir.#{unix_time}.csv", [:append, {:delayed_write, 64 * 1024, 50}])
+  File.open!("/scripts/output/elixir-#{unix_time}.csv", [:append, {:delayed_write, 64 * 1024, 100}])
 
 1..processes_count
 |> Enum.map(fn _ -> Task.async(Worker, :run, [file]) end)
