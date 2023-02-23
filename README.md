@@ -48,6 +48,7 @@ clj -m main
 
 ## Elixir
 
-```elixir
-elixir worker.exs [processes_count]
+```bash
+elixir worker.exs
 ```
+Default processes count - 400, to overload it set `PROCESSES_COUNT` env variable.
