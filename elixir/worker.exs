@@ -95,14 +95,14 @@ defmodule Worker do
 end
 
 processes_count =
-  with [count] <- System.argv(),
+  with count when is_binary(count) <- System.get_env("PROCESSES_COUNT"),
        {count, _} <- Integer.parse(count) do
     count
   else
-    _ -> System.schedulers() * 50
+    _ -> 400
   end
 
-redis_pool_size = (processes_count / 10) |> round() |> max(1)
+redis_pool_size = (processes_count / 10) |> round() |> max(5)
 
 Supervisor.start_link(
   [
@@ -113,7 +113,8 @@ Supervisor.start_link(
 
 unix_time = DateTime.utc_now() |> DateTime.to_unix()
 
-file = File.open!("/scripts/output/elixir.csv.#{unix_time}", [:append, :binary])
+file =
+  File.open!("/scripts/output/elixir.#{unix_time}.csv", [:append, {:delayed_write, 64 * 1024, 50}])
 
 1..processes_count
 |> Enum.map(fn _ -> Task.async(Worker, :run, [file]) end)
