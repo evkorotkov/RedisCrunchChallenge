@@ -48,7 +48,7 @@ clj -m main
 
 ## Elixir
 
-```elixir
-# Supported process modes: gen_server, gen_stage, flow, broadway
-mix process --mode <process_mode>
+```bash
+elixir worker.exs
 ```
+Default processes count - 400, to overload it set `PROCESSES_COUNT` env variable.
