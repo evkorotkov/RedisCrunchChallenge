@@ -1,16 +1,17 @@
-import io
-import os
-import time
-import hashlib
 from concurrent import futures
+from hashlib import md5
+from multiprocessing import Queue
+from os import environ
+from time import time
 
-import msgspec
 import redisio
+from msgspec import Struct
+from msgspec.json import Decoder, Encoder
 
 DISCOUNTS_MAP = [0, 5, 10, 15, 20, 25, 30]
 
 
-class Event(msgspec.Struct):
+class Event(Struct):
     index: int
     wday: int
     payload: str
@@ -19,29 +20,39 @@ class Event(msgspec.Struct):
     total: float | None = None
 
 
-def worker():
-    _dec = msgspec.json.Decoder(Event).decode
-    _enc = msgspec.json.Encoder().encode
+def worker(num, host, port):
+    _dec = Decoder(Event).decode
+    _enc = Encoder().encode
     _discounts = tuple(d / 100.0 for d in DISCOUNTS_MAP)
-    _buf = io.BytesIO()
-    redis = redisio.Redis(host="redis", port=6379)
+    redis = redisio.Redis(host=host, port=port)
     while response := redis("BRPOP", "events_queue", 5).next():
         event = _dec(response[1])
         event.total = round(event.price - event.price * _discounts[event.wday], 2)
-        md5 = hashlib.md5(_enc(event)).hexdigest()
-        _buf.write(f"{int(time.time())},{event.index},{md5}\n".encode())
-    return _buf
+        md5_hash = md5(_enc(event)).hexdigest()
+        queue.put(f"{int(time())},{event.index},{md5_hash}\n".encode())
+    queue.put(None)
+    print(f"Worker {num} finished")
+
+
+def event_writer(workers):
+    finished = 0
+    result_file = f"/scripts/output/python-{int(time())}.csv"
+    with open(result_file, "wb") as csv:
+        while finished < workers:
+            item = queue.get()
+            if item is not None:
+                csv.write(item)
+            else:
+                finished += 1
 
 
 if __name__ == "__main__":
-    result_file = f"/scripts/output/python-{int(time.time())}.csv"
-    num_workers = int(os.environ.get("WORKERS", 4))
-    with open(result_file, "wb") as csv:
-        with futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
-            print(f"Starting {num_workers} workers")
-            ff = [executor.submit(worker) for _ in range(num_workers)]
-            for future in futures.as_completed(ff):
-                print(f"Worker {ff.index(future)} finished")
-                b = future.result()
-                b.seek(0)
-                csv.write(b.read())
+    num_workers = int(environ.get("WORKERS", 4))
+    redis_host = environ.get("REDIS_HOST", "redis")
+    redis_port = int(environ.get("REDIS_PORT", "6379"))
+    queue = Queue()
+    with futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+        print(f"Starting {num_workers} workers")
+        ff = [executor.submit(worker, num, redis_host, redis_port) for num in range(num_workers)]
+        ff.append(executor.submit(event_writer, num_workers))
+        futures.wait(ff)
