@@ -52,3 +52,9 @@ clj -m main
 elixir worker.exs
 ```
 Default processes count - 400, to overload it set `PROCESSES_COUNT` env variable.
+
+## Python
+
+```bash
+WORKERS=<workers_count> python process.py
+```

@@ -82,7 +82,17 @@ services:
       dockerfile: ./golang/Dockerfile
     depends_on:
     - redis
-
+  python:
+    environment:
+      <<: *common-env
+    volumes:
+      - ./python:/python
+      - .scripts:/scripts
+    build:
+      context: .
+      dockerfile: ./python/Dockerfile
+    depends_on:
+    - redis
   redis:
     image: redis:7.0.5-alpine3.17
     command: redis-server
