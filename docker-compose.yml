@@ -26,6 +26,17 @@ services:
       dockerfile: ./ruby_v2/Dockerfile
     depends_on:
       - redis
+  ruby_async:
+    environment:
+      <<: *common-env
+    volumes:
+      - ./ruby_async:/ruby_async
+      - .scripts:/scripts
+    build:
+      context: .
+      dockerfile: ./ruby_async/Dockerfile
+    depends_on:
+      - redis
   node:
     # TODO: add mode switch
     environment:

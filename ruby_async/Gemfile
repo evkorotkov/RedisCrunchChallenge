@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'async'
+gem 'async-container'
+gem 'async-io'
+gem 'async-redis'
+gem 'oj'
+gem 'oj_mimic_json'
