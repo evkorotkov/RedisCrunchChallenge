@@ -23,6 +23,10 @@ c/build/*
 !c/build/.keep
 !c/build/worker_parallel
 
+# .NET
+dotnet/obj
+dotnet/bin
+
 # Elixir
 *beam
 elixir/_build/
