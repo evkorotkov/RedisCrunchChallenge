@@ -18,7 +18,7 @@ struct BufferedWriter {
 struct BufferedWriter* init_buffered_writer(const char *filename) {
   struct BufferedWriter *bw = malloc(sizeof *bw);
 
-  bw->io = fopen(filename, "w");
+  bw->io = fopen(filename, "a");
   bw->bytes_written = 0;
 
   return bw;

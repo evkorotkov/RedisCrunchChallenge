@@ -21,6 +21,7 @@ golang/main
 
 c/build/*
 !c/build/.keep
+!c/build/worker_parallel
 
 # Elixir
 *beam

@@ -57,5 +57,6 @@ Default processes count - 400, to overload it set `PROCESSES_COUNT` env variable
 
 ```bash
 make
-./build/worker
+./build/worker # single process
+./build/worker_parallel [processes_count] # multiple processes
 ```
