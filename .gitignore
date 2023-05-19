@@ -17,6 +17,10 @@ rust/target/
 
 golang/main
 
+# C
+
+c/build/
+
 # Elixir
 *beam
 elixir/_build/
