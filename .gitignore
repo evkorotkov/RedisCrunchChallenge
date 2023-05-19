@@ -19,7 +19,8 @@ golang/main
 
 # C
 
-c/build/
+c/build/*
+!c/build/.keep
 
 # Elixir
 *beam
