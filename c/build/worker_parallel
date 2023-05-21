@@ -1,0 +1,8 @@
+#!/bin/sh
+
+available_cores=$(grep -c ^processor /proc/cpuinfo)
+count=${1:-$available_cores}
+script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
+
+echo "Running $count processes"
+seq $count | parallel -j $count -n0 $script_dir/worker

@@ -17,6 +17,12 @@ rust/target/
 
 golang/main
 
+# C
+
+c/build/*
+!c/build/.keep
+!c/build/worker_parallel
+
 # Elixir
 *beam
 elixir/_build/

@@ -49,6 +49,17 @@ services:
       dockerfile: ./rust/Dockerfile
     depends_on:
       - redis
+  c:
+    environment:
+      <<: *common-env
+    volumes:
+      - ./c:/c
+      - .scripts:/scripts
+    build:
+      context: .
+      dockerfile: ./c/Dockerfile
+    depends_on:
+      - redis
   elixir:
     environment:
       <<: *common-env

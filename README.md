@@ -52,3 +52,11 @@ clj -m main
 elixir worker.exs
 ```
 Default processes count - 400, to overload it set `PROCESSES_COUNT` env variable.
+
+## C
+
+```bash
+make
+./build/worker # single process
+./build/worker_parallel [processes_count] # multiple processes
+```
