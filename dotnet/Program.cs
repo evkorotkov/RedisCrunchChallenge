@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Globalization;
 
@@ -11,6 +13,8 @@ using StackExchange.Redis;
 
 var host = Environment.GetEnvironmentVariable("REDIS_HOST") ?? "redis";
 var redis = ConnectionMultiplexer.Connect(host).GetDatabase();
+
+var threads = Int32.Parse(Environment.GetEnvironmentVariable("WORKERS") ?? "16");
 
 var filepath = String.Format("/scripts/output/dotnet-{0}.csv", UnixNow());
 
@@ -25,26 +29,68 @@ var options = new JsonSerializerOptions {
 long UnixNow() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 Message DecodeItem(RedisValue item) => JsonSerializer.Deserialize<Message>((string) item);
 
-using (var writer = new StreamWriter(filepath))
-using (var output = new CsvWriter(writer, config)) {
+var channel = new ConcurrentQueue<(Kind, Message)>();
+
+var writer = new Thread(WriterWorker);
+writer.Start(channel);
+
+
+var readers = new List<Thread>(threads);
+for (int i = 0; i < threads; i++) {
+  var thread = new Thread(ReaderWorker);
+  thread.Start(channel);
+  readers.Add(thread);
+}
+
+foreach (var thread in readers) {
+  thread.Join();
+}
+
+writer.Join();
+
+Console.WriteLine("Done.");
+
+void ReaderWorker(Object ctx) {
+  var queue = (ConcurrentQueue<(Kind, Message)>) ctx;
+
   var done = false;
 
   while (!done) {
     var item = redis.ListRightPop("events_queue");
 
     if (item.HasValue) {
-      var decoded = DecodeItem(item);
-      var signature = ProcessItem(decoded);
-
-      output.WriteRecord(new { Timestamp = UnixNow(), Index = decoded.index, Signature = signature });
-      output.NextRecord();
+      queue.Enqueue((Kind.Message, DecodeItem(item)));
     } else {
+      queue.Enqueue((Kind.Done, null));
       done = true;
     }
   }
-}
+};
 
-Console.WriteLine("Done.");
+void WriterWorker(Object ctx) {
+  var queue = (ConcurrentQueue<(Kind, Message)>) ctx;
+
+  using (var writer = new StreamWriter(filepath))
+  using (var output = new CsvWriter(writer, config)) {
+    var done = 0;
+
+    while (done < threads) {
+      (Kind, Message) payload;
+
+      if (queue.TryDequeue(out payload)) {
+        (Kind kind, Message message) = payload;
+
+        if (kind == Kind.Message) {
+          var signature = ProcessItem(message);
+          output.WriteRecord(new { Timestamp = UnixNow(), Index = message.index, Signature = signature });
+          output.NextRecord();
+        } else if (kind == Kind.Done) {
+          done += 1;
+        }
+      }
+    }
+  }
+}
 
 string ProcessItem(Message message) {
   var discount = message.wday switch {
@@ -67,8 +113,12 @@ string ProcessItem(Message message) {
   return Convert.ToHexString(hash).ToLower();
 };
 
-public class Message
-{
+enum Kind {
+  Message,
+  Done,
+}
+
+class Message {
     public int index { get; set; }
     public int wday { get; set; }
     public string payload { get; set; }
