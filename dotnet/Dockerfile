@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine3.17
+FROM mcr.microsoft.com/dotnet/sdk:7.0-alpine3.16
 
 ENV APP_ROOT=/dotnet
 

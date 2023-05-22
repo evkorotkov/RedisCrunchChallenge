@@ -14,7 +14,8 @@ using StackExchange.Redis;
 var host = Environment.GetEnvironmentVariable("REDIS_HOST") ?? "redis";
 var redis = ConnectionMultiplexer.Connect(host).GetDatabase();
 
-var threads = Int32.Parse(Environment.GetEnvironmentVariable("WORKERS") ?? "16");
+var workers = Environment.GetEnvironmentVariable("WORKERS");
+var threads = workers == null ? Environment.ProcessorCount : Int32.Parse(workers);
 
 var filepath = String.Format("/scripts/output/dotnet-{0}.csv", UnixNow());
 
@@ -33,7 +34,6 @@ var channel = new ConcurrentQueue<(Kind, Message)>();
 
 var writer = new Thread(WriterWorker);
 writer.Start(channel);
-
 
 var readers = new List<Thread>(threads);
 for (int i = 0; i < threads; i++) {
