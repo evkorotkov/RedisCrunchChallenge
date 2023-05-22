@@ -71,6 +71,17 @@ services:
       dockerfile: ./c/Dockerfile
     depends_on:
       - redis
+  dotnet:
+    environment:
+      <<: *common-env
+    volumes:
+      - ./dotnet:/dotnet
+      - .scripts:/scripts
+    build:
+      context: .
+      dockerfile: ./dotnet/Dockerfile
+    depends_on:
+      - redis
   elixir:
     environment:
       <<: *common-env

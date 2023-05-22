@@ -46,6 +46,12 @@ cargo build --release
 ./target/release/rust
 ```
 
+## .NET
+
+```bash
+dotnet run -c Release
+```
+
 ## Clojure
 
 ```bash
