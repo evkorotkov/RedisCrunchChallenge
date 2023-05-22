@@ -19,6 +19,12 @@
 ./runner.sh <processes_count> <threads_count>
 ```
 
+## Ruby Async
+
+```bash
+ruby worker.rb
+```
+
 ## Golang
 
 ```bash

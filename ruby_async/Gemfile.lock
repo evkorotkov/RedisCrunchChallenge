@@ -1,0 +1,41 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    async (2.5.0)
+      console (~> 1.10)
+      io-event (~> 1.1)
+      timers (~> 4.1)
+    async-container (0.16.12)
+      async
+      async-io
+    async-io (1.34.3)
+      async
+    async-pool (0.4.0)
+      async (>= 1.25)
+    async-redis (0.7.0)
+      async (>= 1.8, < 3.0)
+      async-io (~> 1.10)
+      async-pool (~> 0.2)
+      protocol-redis (~> 0.6.0)
+    console (1.16.2)
+      fiber-local
+    fiber-local (1.0.0)
+    io-event (1.1.7)
+    oj (3.14.3)
+    oj_mimic_json (1.0.1)
+    protocol-redis (0.6.1)
+    timers (4.3.5)
+
+PLATFORMS
+  x86_64-linux
+
+DEPENDENCIES
+  async
+  async-container
+  async-io
+  async-redis
+  oj
+  oj_mimic_json
+
+BUNDLED WITH
+   2.4.12
