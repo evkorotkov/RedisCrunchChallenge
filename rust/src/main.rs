@@ -2,12 +2,13 @@ use std::time::SystemTime;
 use std::env;
 use std::thread;
 
-use redis::{Commands, RedisError};
+use redis::{AsyncCommands, RedisError};
 use serde::{Deserialize, Serialize};
 use csv::Writer;
 use math::round;
 
-use tokio::sync::mpsc;
+use crossbeam_channel::bounded;
+use tokio::task::JoinSet;
 
 fn now() -> String {
   let elapsed = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
@@ -70,61 +71,61 @@ impl Message {
 
 #[tokio::main]
 async fn main() {
-  let (snd, mut rcv) = mpsc::channel(4096);
+  let (snd, rcv) = bounded(4096);
 
-  let mut tasks = vec![];
+  let mut tasks = JoinSet::new();
   let workers_count = workers_count();
 
-  for idx in 0..workers_count {
-    println!("Starting worker {}...", idx);
+  println!("Starting writer...");
+  let writer = tokio::spawn(async move {
+    let mut csv_file = Writer::from_path(format!("/scripts/output/rust-{}.csv", now())).unwrap();
+
+    for row in rcv.iter().flatten() {
+      csv_file.write_record(row).unwrap();
+    }
+  });
+
+  println!("Starting workers...");
+  for idx in 0..(workers_count * 8) {
     let snd2 = snd.clone();
 
-    let handle = tokio::spawn(async move {
+    tasks.spawn(async move {
+      print!("{}... ", idx);
       let client = redis::Client::open(redis_path()).unwrap();
-      let mut con = client.get_connection().unwrap();
+      let mut con = client.get_multiplexed_tokio_connection().await.unwrap();
 
       loop {
-        let encoded = con.brpop("events_queue", 5);
+        let encoded = con.brpop("events_queue", 5.0).await;
+
         match Message::from_redis(encoded) {
           Some(mut message) => {
-            if let Err(_) = snd2.send(Some(message.csv_row())).await {
+            let row = message.csv_row();
+
+            if (snd2.send(Some(row))).is_err() {
               break;
             }
           },
-          None => {
-            break;
-          },
+
+          None => break,
         }
       }
     });
-
-    tasks.push(handle);
   }
 
-  tokio::spawn(async move {
+  let monitor = tokio::spawn(async move {
     let snd3 = snd.clone();
 
-    for task in tasks {
-      if let Err(_) = task.await {
+    while let Some(res) = tasks.join_next().await {
+      if res.is_err() {
         println!("Task failed.");
       }
     }
 
-    snd3.send(None).await
+    snd3.send(None).unwrap();
   });
 
-  let mut csv_file = Writer::from_path(format!("/scripts/output/rust-{}.csv", now())).unwrap();
-
-  loop {
-    if let Some(msg) = rcv.recv().await {
-      if let Some(row) = msg {
-        csv_file.write_record(row).unwrap();
-      } else {
-        rcv.close();
-        break;
-      }
-    }
-  }
+  monitor.await.unwrap();
+  writer.await.unwrap();
 
   println!("Done.");
 }
