@@ -8,7 +8,6 @@ use csv::Writer;
 use math::round;
 
 use crossbeam_channel::bounded;
-use serde_json::value;
 use tokio::task::JoinSet;
 
 fn now() -> String {
@@ -30,8 +29,10 @@ fn workers_count() -> usize {
   }
 }
 
+
+
 #[derive(Debug, Serialize, Deserialize)]
-struct Message {
+struct Payload {
   index: i32,
   wday: usize,
   payload: String,
@@ -42,12 +43,8 @@ struct Message {
   total: f32,
 }
 
-impl Message {
+impl Payload {
   const DISCOUNTS: [f32; 7] = [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0];
-
-  pub fn from_redis(encoded: &str) -> Option<Message> {
-    return serde_json::from_str(encoded).ok();
-  }
 
   pub fn update_discount(&mut self) {
     let discount = Self::DISCOUNTS[self.wday] / 100.0;
@@ -68,6 +65,32 @@ impl Message {
   }
 }
 
+#[derive(Debug)]
+enum Message {
+  Decoded(Payload),
+  Row(Vec<String>),
+  Timeout,
+  Error,
+  Done,
+}
+
+impl Message {
+  pub fn from_redis(encoded: Result<Vec<String>, RedisError>) -> Self {
+    match encoded {
+      Ok(mut value) => {
+        let first = value.pop().unwrap();
+        let payload = serde_json::from_str(&first).unwrap();
+
+        Message::Decoded(payload)
+      },
+      Err(err) => match err.kind() {
+        RedisErrorKind::Timeout => Message::Timeout,
+        _ => Message::Error
+      },
+    }
+  }
+}
+
 #[tokio::main]
 async fn main() {
   let (snd, rcv) = bounded(4096);
@@ -79,8 +102,14 @@ async fn main() {
   let writer = tokio::spawn(async move {
     let mut csv_file = Writer::from_path(format!("/scripts/output/rust-{}.csv", now())).unwrap();
 
-    for row in rcv.iter().flatten() {
-      csv_file.write_record(row).unwrap();
+    for message in rcv.iter() {
+      match message {
+        Message::Row(row) => {
+          csv_file.write_record(row).unwrap();
+        },
+        Message::Done => break,
+        _ => unreachable!()
+      }
     }
   });
 
@@ -91,35 +120,22 @@ async fn main() {
     tasks.spawn(async move {
       print!("{}... ", idx);
       let config = RedisConfig::from_url(&redis_path()).unwrap();
-      let builder = Builder::from_config(config);
-
-      let client = builder.build().unwrap();
+      let client = Builder::from_config(config).build().unwrap();
       client.init().await.unwrap();
 
       loop {
         let item: Result<Vec<String>, RedisError> = client.brpop("events_queue", 5.0).await;
 
-        match item {
-          Ok(mut arr) => {
-            let value = arr.pop().unwrap();
+        match Message::from_redis(item) {
+          Message::Decoded(mut payload) => {
+            let message = Message::Row(payload.csv_row());
 
-            match Message::from_redis(&value) {
-              Some(mut message) => {
-                let row = message.csv_row();
-
-                if (snd2.send(Some(row))).is_err() {
-                  break;
-                }
-              }
-
-              None => break,
-            }
-          }
-
-          Err(err) => match err.kind() {
-            RedisErrorKind::Timeout => break,
-            other => unreachable!("Other: {other:?}")
+            snd2.send(message).unwrap()
           },
+
+          Message::Timeout | Message::Error => break,
+          Message::Row(_) => unreachable!("can't pull row from redis"),
+          Message::Done => unreachable!("workers terminate before writer"),
         }
       }
     });
@@ -134,7 +150,7 @@ async fn main() {
       }
     }
 
-    snd3.send(None).unwrap();
+    snd3.send(Message::Done).unwrap();
   });
 
   monitor.await.unwrap();
