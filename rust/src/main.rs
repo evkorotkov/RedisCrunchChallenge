@@ -2,12 +2,13 @@ use std::time::SystemTime;
 use std::env;
 use std::thread;
 
-use redis::{AsyncCommands, RedisError};
+use fred::prelude::*;
 use serde::{Deserialize, Serialize};
 use csv::Writer;
 use math::round;
 
 use crossbeam_channel::bounded;
+use serde_json::value;
 use tokio::task::JoinSet;
 
 fn now() -> String {
@@ -44,9 +45,7 @@ struct Message {
 impl Message {
   const DISCOUNTS: [f32; 7] = [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0];
 
-  pub fn from_redis(result: Result<Vec<String>, RedisError>) -> Option<Message> {
-    let payload = result.ok()?;
-    let encoded = payload.get(1)?;
+  pub fn from_redis(encoded: &str) -> Option<Message> {
     return serde_json::from_str(encoded).ok();
   }
 
@@ -91,22 +90,36 @@ async fn main() {
 
     tasks.spawn(async move {
       print!("{}... ", idx);
-      let client = redis::Client::open(redis_path()).unwrap();
-      let mut con = client.get_multiplexed_tokio_connection().await.unwrap();
+      let config = RedisConfig::from_url(&redis_path()).unwrap();
+      let builder = Builder::from_config(config);
+
+      let client = builder.build().unwrap();
+      client.init().await.unwrap();
 
       loop {
-        let encoded = con.brpop("events_queue", 5.0).await;
+        let item: Result<Vec<String>, RedisError> = client.brpop("events_queue", 5.0).await;
 
-        match Message::from_redis(encoded) {
-          Some(mut message) => {
-            let row = message.csv_row();
+        match item {
+          Ok(mut arr) => {
+            let value = arr.pop().unwrap();
 
-            if (snd2.send(Some(row))).is_err() {
-              break;
+            match Message::from_redis(&value) {
+              Some(mut message) => {
+                let row = message.csv_row();
+
+                if (snd2.send(Some(row))).is_err() {
+                  break;
+                }
+              }
+
+              None => break,
             }
-          },
+          }
 
-          None => break,
+          Err(err) => match err.kind() {
+            RedisErrorKind::Timeout => break,
+            other => unreachable!("Other: {other:?}")
+          },
         }
       }
     });
