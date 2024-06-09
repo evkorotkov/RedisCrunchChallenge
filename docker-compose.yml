@@ -82,6 +82,17 @@ services:
       dockerfile: ./dotnet/Dockerfile
     depends_on:
       - redis
+  luajit:
+    environment:
+      <<: *common-env
+    volumes:
+      - ./luajit:/luajit
+      - .scripts:/scripts
+    build:
+      context: .
+      dockerfile: ./luajit/Dockerfile
+    depends_on:
+      - redis
   elixir:
     environment:
       <<: *common-env
